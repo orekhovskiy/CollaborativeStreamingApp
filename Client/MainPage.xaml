@@ -9,7 +9,23 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
-        <MediaPlayerElement x:Name="localVideoPlayerElement" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition></RowDefinition>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock FontSize="20">Select input device:</TextBlock>
+                <ComboBox x:Name="inputDevice" Height = "Auto" Width = "Auto"/>
+            </StackPanel>
+            <Button Grid.Column="2" x:Name="createOffer" Click="CreateOffer" Height = "Auto" Width = "Auto" Content="Create Offer"/>
+        </Grid>
+        <MediaPlayerElement Grid.Row="1" x:Name="localVideoPlayerElement" PosterSource="Assets/poster.png" />
     </Grid>
 
 </Page>

@@ -2,23 +2,15 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading.Tasks;
 using Windows.ApplicationModel;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Media.Capture;
 using Windows.Media.Core;
 using Windows.Media.MediaProperties;
 using Windows.Media.Playback;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -45,8 +37,8 @@ namespace Client
 
         public MainPage()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoadedAsync;
+            InitializeComponent();
+            Loaded += OnLoadedAsync;
             Application.Current.Suspending += App_Suspending;
         }
 
@@ -82,6 +74,24 @@ namespace Client
             {
                 Debugger.Log(0, "", $"<Client> | Web cam {device.name} (id: {device.id})\n");
             }
+            inputDevice.ItemsSource = deviceList.Select(o => o.name);
+        }
+
+        private async Task<VideoCaptureDevice> GetVideoCaptureDevice(String deviceName)
+        {
+            var devices = await DeviceVideoTrackSource.GetCaptureDevicesAsync();
+            return devices.Where(o => o.name == deviceName).SingleOrDefault();
+        }
+
+        private async void CreateOffer(object sender, RoutedEventArgs e)
+        {
+            var deviceName = (String)inputDevice.SelectedValue;
+            if (deviceName == null)
+            {
+                return;
+            }
+            var device = await GetVideoCaptureDevice(deviceName);
+            if (device.Equals(default)) return;
             _peerConnection = new PeerConnection();
             var config = new PeerConnectionConfiguration
             {
@@ -91,14 +101,37 @@ namespace Client
             };
             await _peerConnection.InitializeAsync(config);
             Debugger.Log(0, "", "<Client> | Peer connection initialized successfully.\n");
+            LocalVideoDeviceInitConfig videoConfig;
+            switch(device.name)
+            {
+                case "USB2.0 VGA UVC WebCam":
+                    return;
+                    videoConfig = new LocalVideoDeviceInitConfig()
+                    {
+                        videoDevice = device,
+                        framerate = 30,
+                        width = 640,
+                        height = 480
+                    };
+                    break;
+                default:
+                    videoConfig = new LocalVideoDeviceInitConfig()
+                    {
+                        videoDevice = device,
+                        framerate = 30,
+                        width = 1920,
+                        height = 1080
+                    };
+                    break;
+            }
 
-            _webcamSource = await DeviceVideoTrackSource.CreateAsync(); 
+            _webcamSource = await DeviceVideoTrackSource.CreateAsync(videoConfig);
             var videoTrackConfig = new LocalVideoTrackInitConfig
             {
                 trackName = "webcam_track"
             };
             _localVideoTrack = LocalVideoTrack.CreateFromSource(_webcamSource, videoTrackConfig);
-            _microphoneSource = await DeviceAudioTrackSource.CreateAsync(); 
+            _microphoneSource = await DeviceAudioTrackSource.CreateAsync();
             var audioTrackConfig = new LocalAudioTrackInitConfig
             {
                 trackName = "microphone_track"
