@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Windows.ApplicationModel;
@@ -8,27 +7,13 @@ using Windows.Media.MediaProperties;
 using Windows.Media.Playback;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using System.Runtime.InteropServices;
 using App1;
 using Microsoft.MixedReality.WebRTC;
-using System.Collections;
 
 namespace CollaborativeStreamingApp
 {
     public sealed partial class MainPage : Page
     {
-        public readonly struct PixelBitsDistribution
-        {
-            public PixelBitsDistribution(int yBits, int uBits, int vBits)
-            {
-                YBits = yBits;
-                UBits = uBits;
-                VBits = vBits;
-            }
-            public readonly int YBits;
-            public readonly int UBits;
-            public readonly int VBits;
-        };
         public readonly PixelBitsDistribution pixelBitsDistribution = new PixelBitsDistribution(8, 2, 2);
 
         private PeerConnection _peerConnection;
@@ -41,8 +26,8 @@ namespace CollaborativeStreamingApp
 
         public MainPage()
         {
-            this.InitializeComponent();
-            this.Loaded += OnLoaded;
+            InitializeComponent();
+            Loaded += OnLoaded;
             Application.Current.Suspending += App_Suspending;
         }
 
@@ -137,10 +122,10 @@ namespace CollaborativeStreamingApp
 
         private void RemoteVideo_I420AFrameReady(I420AVideoFrame frame)
         {
+            //var resizedFrame = Scaler.GetResizeFrame(frame, 1920, 1080, pixelBitsDistribution);
+            //frame = resizedFrame;
             lock (_remoteVideoLock)
             {
-                ResizeFrame(frame, 640, 360);
-
                 if (!_remoteVideoPlaying)
                 {
                     _remoteVideoPlaying = true;
@@ -211,86 +196,9 @@ namespace CollaborativeStreamingApp
             videoBridge.TryServeVideoFrame(args);
         }
 
-        private void Log(String msg)
+        private void Log(object obj)
         {
-            Debugger.Log(0, "", msg + "\n");
-        }
-
-        private void ResizeFrame(I420AVideoFrame frame, int desiredWidth, int desiredHeight)
-        {
-
-            int pixelSize = (int)frame.width * (int)frame.height;
-            int byteSize = (pixelSize / 2 * 3); // I420 = 12 bits per pixe
-            byte[] frameBytes = new byte[byteSize];
-            frame.CopyTo(frameBytes);
-
-            var dataYBits = TakeTotalUnitBits(frameBytes, 12, 0, 8);
-            var dataUBits = TakeTotalUnitBits(frameBytes, 12, 8, 2);
-            var dataVBits = TakeTotalUnitBits(frameBytes, 12, 10, 2);
-
-            var dataYBitsResized = ResizePixels(dataYBits, frame.width, frame.height, desiredWidth, desiredHeight, pixelBitsDistribution.YBits);
-            var dataUBitsResized = ResizePixels(dataUBits, frame.width, frame.height, desiredWidth, desiredHeight, pixelBitsDistribution.UBits);
-            var dataVBitsResized = ResizePixels(dataVBits, frame.width, frame.height, desiredWidth, desiredHeight, pixelBitsDistribution.VBits);
-
-            var dataYBytesResized = ConvertToByteArray(dataYBitsResized);
-            var dataUBytesResized = ConvertToByteArray(dataUBitsResized);
-            var dataVBytesResized = ConvertToByteArray(dataVBitsResized);
-
-            frame.height = (uint)desiredHeight;
-            frame.width = (uint)desiredWidth;
-            frame.strideY = desiredWidth;
-            frame.strideU = desiredHeight * 8 / 9 ;
-            frame.strideV = desiredHeight;
-            Marshal.Copy(dataYBytesResized, 0, frame.dataY, dataYBytesResized.Length);
-            Marshal.Copy(dataUBytesResized, 0, frame.dataU, dataUBytesResized.Length);
-            Marshal.Copy(dataVBytesResized, 0, frame.dataY, dataVBytesResized.Length);
-        }
-
-        private BitArray TakeTotalUnitBits(byte[] bytes, int totalBitsPerPixel, int bitsOffset,  int unitBits)
-        {
-            var bits = new BitArray(bytes);
-            var bitsToSkip = bits.Length / totalBitsPerPixel * bitsOffset;
-            var bitsToTake = bits.Length / totalBitsPerPixel * unitBits;
-            var totalUnitBits = SliceBitArray(bits, bitsToSkip, bitsToTake);
-            return totalUnitBits;
-        }
-
-        public BitArray ResizePixels(BitArray bits, uint w1, uint h1, int w2, int h2, int unitSize)
-        {
-            BitArray temp = new BitArray(w2 * h2);
-            double x_ratio = w1 / (double)w2;
-            double y_ratio = h1 / (double)h2;
-            double px, py;
-            for (int i = 0; i < h2; i+= unitSize)
-            {
-                for (int j = 0; j < w2; j+= unitSize)
-                {
-                    px = Math.Floor(j * x_ratio);
-                    py = Math.Floor(i * y_ratio);
-                    for (int k = 0; k < unitSize; k++)
-                    {
-                        temp[(i * w2) + j + k] = bits[(int)((py * w1) + px) + k];
-                    }
-                }
-            }
-            return temp;
-        }
-        private BitArray SliceBitArray(BitArray array, int skip, int take)
-        {
-            var temp = new bool[take];
-            for (var i = 0; i < take; i++)
-            {
-                temp[i] = array[skip + i];
-            }
-            return new BitArray(temp);
-        }
-
-        private byte[] ConvertToByteArray(BitArray bits)
-        {
-            if (bits.Length % 8 != 0) throw new Exception("Unable to cast");
-            byte[] bytes = new byte[bits.Length / 8];
-            bits.CopyTo(bytes, 0);
-            return bytes;
+            Debugger.Log(0, "", obj.ToString() + "\n");
         }
     }
 }
